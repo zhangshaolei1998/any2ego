@@ -243,9 +243,9 @@ two foreground classes, which optimizes foreground overlap,
 \label{eq:seg}
 \end{equation}
 where $\mathcal{L}_{\mathrm{CE}}$ uses weights $1{:}5{:}5$ over background,
-hand, and object. The predictor is trained on 108{,}338 annotated clips and
-exports masks in the generator's input format, which makes the spatial anchor
-of Eq.~\ref{eq:pipeline} a predicted quantity in every experiment.
+hand, and object. The predictor exports masks in the generator's input format, which makes the
+spatial anchor of Eq.~\ref{eq:pipeline} a predicted quantity in every
+experiment.
 
 \subsection{First-Person Textual Anchor}
 \label{sec:cap}
@@ -472,9 +472,11 @@ backbone and Qwen3-VL-8B-Instruct as the converter, with a frozen umT5 text
 encoder and a ResNet-18 mask predictor. We use ms-swift for difference-weighted
 distillation and its GRPO trainer with colocated vLLM rollout for the
 reinforcement stage, on the Ego-Exo4D cooking splits of
-Section~\ref{sec:data}. Generation and evaluation use 13-frame clips at
-$480\times480$ with 50 denoising steps and a fixed seed, under one shared
-frame-loading pipeline. All training and inference run on NVIDIA A800 GPUs.
+Section~\ref{sec:data}. Our models generate 13-frame clips at
+$480\times480$ with 50 denoising steps and a fixed seed, each baseline keeps the
+sampler setting of its release, and every metric is computed under one shared
+frame-loading pipeline defined in Appendix~\ref{app:eval}. All training and
+inference run on NVIDIA A800 GPUs.
 
 \subsection{Main Results}
 \label{sec:main}
@@ -612,10 +614,11 @@ $\;\;-$ caption, $+$ VLM features & 0.618 & 21.22 & 0.184 & 44.5 \\
 
 The natural alternative to a caption is to pass continuous vision-language
 features across views. To test this under a controlled comparison, we build a
-continuous branch that extracts visual and instruction tokens from a frozen
-Qwen3-VL-32B on the exocentric frames, projects them into the video model, and
-injects them through a globally gated cross-attention branch. It sits on the same
-frozen EgoExo-Gen base and differs from the text branch only in what it carries.
+continuous branch that extracts visual and instruction tokens from layer 32 of a
+frozen Qwen3-VL-32B on the same 13 exocentric frames, projects the
+5120-dimensional features into the video model, and injects them through a
+globally gated cross-attention branch. It sits on the same frozen EgoExo-Gen base
+and differs from the text branch only in what it carries.
 
 As shown in Table~\ref{tab:component}, putting VLM features in place of the
 caption improves the frame-level metrics yet leaves FVD no better than dropping
@@ -901,10 +904,9 @@ evaluation.
 \section{Evaluation Protocol}
 \label{app:eval}
 
-All methods are evaluated on the same fixed split of $N{=}1{,}000$ clips
-with 13 frames at $480\times480$, 50 denoising steps, and a fixed seed, where
-CogVideoX uses its native 30 steps and we retain the first 13 of its 49 output
-frames without temporal resampling. Per-clip PSNR, SSIM, and LPIPS are
+All methods are evaluated on the same fixed split of $N{=}1{,}000$ clips at
+13 frames, where CogVideoX uses its native 30 steps and we retain the first 13 of
+its 49 output frames without temporal resampling. Per-clip PSNR, SSIM, and LPIPS are
 computed after resizing to $256\times256$, and FVD is pooled over the whole
 split with I3D features. The exo-conditioned baselines receive raw
 exocentric RGB as control input, the text-capable image-to-video baselines
