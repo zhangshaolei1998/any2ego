@@ -417,7 +417,7 @@ $\epsilon_z$ is Gaussian noise, $\omega(\tau)$ the scheduler weight, $P_{+}$
 excludes the fixed first latent frame, and $\mathcal{C}$ collects
 $(I_0,\widehat{M},n)$ in stage one and $(I_0,\widehat{M},n,c)$ in stage two.
 Because stage two changes only the caption path, the reproduced baseline, the
-global gate, and spatial routing differ in exactly one design decision.
+global gate, and the full model differ in exactly one design decision.
 
 \subsection{Freeze-Frame Calibration}
 \label{sec:freeze}
@@ -517,12 +517,12 @@ Qwen3-VL-8B & 8B & 2.829 & 2.831 & 3.164 & 0.0\% & 99.3\% \\
 \end{table}
 \begin{table}[t]
 \centering\small
-\caption{The textual anchor improves every metric over EgoExo-Gen, which we
-reproduce on the same backbone, while continuous vision-language features fail to
-improve its FVD. Frame-level metrics saturate on short horizons, since the
-freeze-frame calibration outscores all six open-source generators on SSIM and
-PSNR while ranking near the bottom on FVD. Sees exo indicates whether a model observes the
-third-person video. Best values are in \textbf{bold}.}
+\caption{Any2Ego leads every open-source generator and EgoExo-Gen, which we
+reproduce on the same backbone, on all four metrics. Frame-level metrics saturate
+on short horizons, since the freeze-frame calibration outscores all six
+open-source generators on SSIM and PSNR while ranking near the bottom on FVD.
+Sees exo indicates whether a model observes the third-person video. Best values
+are in \textbf{bold}.}
 \label{tab:main}
 \begin{tabular}{lcC{1.35cm}C{1.35cm}C{1.35cm}C{1.35cm}}
 \toprule
@@ -537,12 +537,8 @@ Wan2.2-TI2V-5B & no & 0.553 & 20.74 & 0.225 & 127.6 \\
 LTX-Video & no & 0.574 & 20.85 & 0.210 & 121.6 \\
 CogVideoX-5B-I2V & no & 0.578 & 21.09 & 0.211 & 148.3 \\
 EgoExo-Gen (reproduced) & yes & 0.608 & 21.06 & 0.194 & 42.6 \\
-$\;\;+$ VLM features, global gate & yes & 0.618 & 21.22 & 0.184 & 44.5 \\
 \midrule
-\multicolumn{6}{c}{\textbf{\textit{Any2Ego}}} \\
-\midrule
-$\;\;+$ textual anchor, global gate & yes & 0.636 & 21.74 & 0.163 & 37.8 \\
-$\;\;+$ textual anchor, spatial routing & yes & \textbf{0.660} & \textbf{22.28} & \textbf{0.144} & \textbf{33.3} \\
+\textbf{Any2Ego (ours)} & yes & \textbf{0.660} & \textbf{22.28} & \textbf{0.144} & \textbf{33.3} \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -554,11 +550,10 @@ real egocentric continuation. We compare Any2Ego with video-to-video generators 
 receive the raw exocentric video, with image-to-video generators that receive the
 first frame and the task prompt, each run from its released checkpoint, and with
 the freeze-frame calibration. Since EgoExo-Gen~\citep{xu2025egoexogen} is reproduced on the
-same backbone, the Any2Ego rows isolate what the textual anchor adds to it. As
-shown in Table~\ref{tab:main}, EgoExo-Gen already separates itself from every
-open-source generator on FVD, and the textual anchor improves it further under
-both injection rules, with spatial routing reaching $33.3$ FVD and leading on all
-four metrics without a single inversion. More importantly, the freeze-frame row
+same backbone, the comparison against it isolates what the textual anchor adds.
+As shown in Table~\ref{tab:main}, Any2Ego leads on all four metrics and reaches
+$33.3$ FVD, while EgoExo-Gen, the strongest prior method here, already separates
+itself from every open-source generator. More importantly, the freeze-frame row
 shows why the frame-level columns must be read with care, since a video with no
 generated motion outscores all six open-source generators on SSIM and PSNR while
 placing near the bottom on FVD. Overall, Any2Ego translates viewpoints in a way
@@ -566,22 +561,22 @@ that frame-level agreement alone cannot explain.
 
 \textbf{Capability on Preserving Cross-view Scene Structure.}\quad We finally inspect full
 frames to assess whether the textual anchor changes
-\emph{viewpoint-dependent structure} beyond local texture, comparing EgoExo-Gen,
-the global gate, and spatial routing against the ground truth at matched time
+\emph{viewpoint-dependent structure} beyond local texture, comparing Any2Ego, Any2Ego
+without spatial routing, and EgoExo-Gen against the ground truth at matched time
 indices. As shown in Figure~\ref{fig:qual}, the cases differ in the
 layout of the cooking area, the overhead cabinet, and the window and background,
-which are the parts of the frame a mask leaves unspecified. Spatial routing
-follows the ground-truth framing of these regions more closely than the global
-gate, which matches Eq.~\ref{eq:dilution} in that a shared scalar cannot raise
-caption influence on the scene without also raising it where EgoExo-Gen is
-already correct. Overall, the gains in Table~\ref{tab:main} correspond to visible scene
-structure.
+which are the parts of the frame a mask leaves unspecified. Any2Ego follows the
+ground-truth framing of these regions more closely than the variant without
+spatial routing, which matches Eq.~\ref{eq:dilution} in that a shared scalar
+cannot raise caption influence on the scene without also raising it where
+EgoExo-Gen is already correct. Overall, the margins in
+Table~\ref{tab:component} correspond to visible scene structure.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.52\textwidth]{figs/qual_compare/qualitative_grid.pdf}
-\caption{Spatial routing preserves the viewpoint-dependent scene structure
-that a mask leaves unspecified, including the layout of the cooking area in
+\caption{Any2Ego preserves the viewpoint-dependent scene structure that a mask
+leaves unspecified, including the layout of the cooking area in
 (a) skillet placement at frame 9, the overhead cabinet in (b) scooping oil at
 frame 11, and the window and background content in (c) cleaning a milk-tea cup
 at frame 10. Ground truth is shown for comparison only and is never available
@@ -591,6 +586,26 @@ to any model.}
 
 \section{Analysis}
 \label{sec:analysis}
+
+\begin{table}[t]
+\centering\small
+\caption{Removing either anchor from Any2Ego costs accuracy on every metric, and
+removing the textual anchor recovers EgoExo-Gen. Replacing the caption with
+continuous vision-language features from a frozen Qwen3-VL-32B improves the
+frame-level metrics yet leaves FVD no better than removing the anchor. Best
+values are in \textbf{bold}.}
+\label{tab:component}
+\begin{tabular}{lC{1.5cm}C{1.5cm}C{1.5cm}C{1.5cm}}
+\toprule
+\textbf{Model} & \textbf{SSIM}\,$\uparrow$ & \textbf{PSNR}\,$\uparrow$ & \textbf{LPIPS}\,$\downarrow$ & \textbf{FVD}\,$\downarrow$ \\
+\midrule
+\textbf{Any2Ego} & \textbf{0.660} & \textbf{22.28} & \textbf{0.144} & \textbf{33.3} \\
+$\;\;-$ spatial routing & 0.636 & 21.74 & 0.163 & 37.8 \\
+$\;\;-$ textual anchor & 0.608 & 21.06 & 0.194 & 42.6 \\
+$\;\;-$ caption, $+$ VLM features & 0.618 & 21.22 & 0.184 & 44.5 \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Superiority of the Textual Anchor over Continuous Features}
 \label{sec:modality}
@@ -602,11 +617,11 @@ Qwen3-VL-32B on the exocentric frames, projects them into the video model, and
 injects them through a globally gated cross-attention branch. It sits on the same
 frozen EgoExo-Gen base and differs from the text branch only in what it carries.
 
-As shown in Table~\ref{tab:main}, the continuous branch improves the frame-level
-metrics yet leaves FVD no better than EgoExo-Gen itself, so it buys frame-level
-agreement without improving the video distribution. Under the same gate the text
-branch improves both, which places the text advantage before any routing is
-introduced. Two properties of a caption explain
+As shown in Table~\ref{tab:component}, putting VLM features in place of the
+caption improves the frame-level metrics yet leaves FVD no better than dropping
+the textual anchor altogether, so it buys frame-level agreement without improving the
+video distribution. Under the same gate the caption improves both, which places the
+text advantage before any routing is introduced. Two properties of a caption explain
 the gap. First, the converter selects interaction-relevant content over all
 exocentric appearance and already states it in the target viewpoint, whereas the
 continuous branch retains source-view tokens whose relation to the egocentric
@@ -620,9 +635,9 @@ To test the prediction of Eq.~\ref{eq:dilution} we hold everything except the
 gating rule fixed, so the two variants share the frozen EgoExo-Gen base, the same
 captions clip for clip, the same projections, and the same schedule.
 
-As shown in Table~\ref{tab:main}, HOI-conditioned routing improves every metric
-over the global gate without a single inversion, and the margin is largest on
-FVD. Two features of the comparison support the dilution account. First, the route helps more on the
+As shown in Table~\ref{tab:component}, dropping HOI-conditioned routing back to a
+global gate costs every metric without a single inversion, and the largest
+margins are on FVD and LPIPS. Two features of the comparison support the dilution account. First, the route helps more on the
 distributional metric than on the frame-level ones, which is expected when the
 correction concentrates on a minority of tokens whose contribution to a
 frame-averaged score is small. Second, the gain survives on clips where
@@ -638,7 +653,7 @@ cost of $30$ projection vectors of width $d$.
 \centering\small
 \caption{The trained model reads the content of both anchors, and the division of
 labor is asymmetric. Win is the fraction of clips on which the original conditions
-give higher SSIM than the randomized input.}
+give higher SSIM than the randomized input. Best values are in \textbf{bold}.}
 \label{tab:ablation}
 \begin{tabular}{lC{0.95cm}C{1.0cm}C{1.0cm}}
 \toprule
@@ -685,9 +700,9 @@ CogVideoX-5B-I2V & 0.198 & 18.76 & 0.54 \\
 Wan2.1-VACE-1.3B & 0.003 & 18.09 & 0.71 \\
 Wan2.1-Fun-1.3B-Control & 0.319 & 10.35 & 5.28 \\
 \midrule
-EgoExo-Gen (reproduced) & 0.561 & 19.80 & 1.18 \\
-$\;\;+$ textual anchor, global gate & 0.614 & 20.47 & 1.14 \\
-$\;\;+$ textual anchor, spatial routing & \textbf{0.647} & \textbf{21.17} & \textbf{1.04} \\
+\textbf{Any2Ego} & \textbf{0.647} & \textbf{21.17} & \textbf{1.04} \\
+$\;\;-$ spatial routing & 0.614 & 20.47 & 1.14 \\
+$\;\;-$ textual anchor & 0.561 & 19.80 & 1.18 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -702,8 +717,8 @@ Pearson correlation ($\Delta$Corr), the residual PSNR ($\Delta$PSNR), and the ra
 of mean absolute residual magnitudes, where a model holding its first frame scores
 zero correlation by construction.
 
-As shown in Table~\ref{tab:residual}, EgoExo-Gen and the two Any2Ego variants
-raise residual correlation in order, reaching $0.647$, while the
+As shown in Table~\ref{tab:residual}, Any2Ego reaches a residual correlation of
+$0.647$ and each removed anchor lowers it in turn, while the
 prompt-conditioned baselines stay near $0.20$ and reproduce only half to three
 quarters of the true residual magnitude, so their frame-level scores come mostly
 from retained appearance. Spatial routing also brings the magnitude ratio closest
@@ -943,7 +958,7 @@ examine whether the gains hold across the pool. We compute per-clip scores
 over the 13 frames of every clip in the fixed split and compare the three
 Any2Ego variants under a shared kernel bandwidth. As shown in
 Figure~\ref{fig:dist}, median SSIM moves from $0.613$ to $0.638$ and to
-$0.657$ across EgoExo-Gen, the global gate, and spatial routing, and median PSNR
+$0.657$ across EgoExo-Gen, Any2Ego without spatial routing, and Any2Ego, and median PSNR
 moves from $21.27$ to
 $21.80$ and to $22.35$\,dB, which tracks the means in Table~\ref{tab:main}
 and indicates that the improvement is not driven by a tail. The distribution
@@ -957,7 +972,7 @@ whole pool instead of a favorable subset.
 \includegraphics[width=\textwidth]{figs/metric_distributions_ssim_psnr.pdf}
 \caption{The textual anchor shifts the whole evaluation pool instead of a
 favorable subset, since per-clip (a) SSIM and (b) PSNR distributions move
-together across EgoExo-Gen, the global gate, and spatial routing under a shared
+together across EgoExo-Gen, Any2Ego without spatial routing, and Any2Ego under a shared
 kernel bandwidth.}
 \label{fig:dist}
 \end{figure}
