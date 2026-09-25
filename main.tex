@@ -20,6 +20,7 @@
 \usepackage{subcaption}
 \usepackage{enumitem}
 \usepackage{array}
+\usepackage{wrapfig}
 
 \newcommand{\PreserveBackslash}[1]{\let\temp=\\#1\let\\=\temp}
 \newcolumntype{C}[1]{>{\PreserveBackslash\centering}p{#1}}
@@ -63,29 +64,26 @@ frame at inference.
 \section{Introduction}
 \label{sec:intro}
 
-Egocentric video is the format in which embodied agents see the world, with
-the hands inside the field of view, a viewpoint that moves with the head, and
-heavy self-occlusion of the manipulated object~\citep{grauman2024egoexo4d}, and
-manipulation policies, wearable assistants, and action anticipation all consume
-data in this form. However, it is also the format that is hardest to obtain at
-scale, because every clip needs a head-mounted camera on a real wearer, whereas
-third-person recordings of the same activities exist in quantity. Egocentric
-viewpoint translation, which synthesizes the first-person video of a manipulation
-task from a third-person observation of it, therefore turns a plentiful resource
-into a scarce one. However, the value of such data rests entirely on whether the
-generated video preserves the interaction that the demonstration shows.
+Egocentric video is the format in which embodied agents see the world, with the
+hands inside the field of view, a viewpoint that moves with the head, and heavy
+self-occlusion of the manipulated object~\citep{grauman2024egoexo4d}. However, it
+is also the format that is hardest to obtain at scale, because every clip needs a
+head-mounted camera on a real wearer, whereas third-person recordings of the same
+activities exist in quantity. Egocentric viewpoint translation, which synthesizes
+the first-person video of a manipulation task from a third-person observation of
+it, therefore turns a plentiful resource into a scarce one. The value of such data
+rests entirely on whether the generated video preserves the interaction that the
+demonstration shows.
 
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.94\textwidth]{figs/teaser_overview.pdf}
-\vspace{-2mm}
 \caption{Any2Ego turns one hard cross-view mapping into two easier ones by
 translating through an explicit intermediate modality, where a produced
 spatial anchor states where the interaction happens and a produced textual
 anchor states what it looks like from the first person, and HOI-conditioned
 spatial routing decides where the textual anchor takes effect.}
 \label{fig:teaser}
-\vspace{-4mm}
 \end{figure}
 
 This translation is far harder than a change of camera pose. Most of what fills
@@ -94,27 +92,24 @@ body occludes the workspace and the egocentric view is dominated by the hands, s
 the two views share no dense pixel correspondence a network could regress. A
 direct mapping then asks one model to understand the action, relocate it into the
 wearer's body frame, and synthesize first-person appearance in one step, with no
-intermediate quantity to supervise or inspect when the output is wrong. A person works
-in two steps instead. Given a demonstration, a person first resolves where the
-interaction is, which hand acts on which object and how they contact, and then
-resolves what it looks like from the first person, where the objects fall in the
-field of view and how the scene appears. A direct mapping collapses both steps
-into one.
+intermediate quantity to supervise or inspect when the output is wrong. A person works in two steps instead,
+first resolving where the interaction is, which hand acts on which object and how
+they contact, and then resolving what it looks like from the first person, where
+the objects fall in the field of view and how the scene appears. A direct mapping
+collapses both steps into one.
 
 Existing approaches to egocentric video generation can be broadly categorized
 into \emph{spatially conditioned translators} and \emph{general video generators}.
 Along the first line, EgoExo-Gen~\citep{xu2025egoexogen} transfers HOI masks
-across views to supply the layout of hands and manipulated objects, and
-EgoX~\citep{kang2025egox} builds a geometric prior from depth, point clouds, and
-camera poses. However, these answer only the first of the two questions above,
-since a mask or a depth map specifies neither object appearance, nor the meaning
-of a contact, nor how the scene reads from the wearer's eyes. More recently, a line of work has explored general video
-backbones such as Stable Video Diffusion~\citep{blattmann2023svd},
-ConsistI2V~\citep{ren2024consisti2v}, Wan~\citep{wan2025}, and
-VACE~\citep{vace2025}, which pair generative capacity with generic conditioning
-interfaces. Although they accept visual and textual controls, they perform no
-cross-view conversion of their own and offer no mechanism deciding where an
-external semantic condition takes effect. In essence, every explicit intermediate representation proposed so far is
+across views and EgoX~\citep{kang2025egox} builds a geometric prior from depth,
+point clouds, and camera poses. However, these answer only the first of the two
+questions above, since a mask or a depth map specifies neither object appearance,
+nor the meaning of a contact, nor how the scene reads from the wearer's eyes. A
+second line develops general video backbones such as Stable Video
+Diffusion~\citep{blattmann2023svd}, ConsistI2V~\citep{ren2024consisti2v},
+Wan~\citep{wan2025}, and VACE~\citep{vace2025}. Although they accept visual and
+textual controls, they perform no cross-view conversion of their own and offer no
+mechanism deciding where an external semantic condition takes effect. Every explicit intermediate representation proposed so far is
 spatial, because geometry is the part of an interaction that transfers across
 views by construction, so the second question has never been given a carrier of
 its own and remains answered inside the generator weights.
@@ -264,17 +259,17 @@ rank-16 LoRA. Its input $u=(X,I_0,\widehat{M},n,\iota)$ collects the exocentric
 video, the egocentric first frame, the predicted masks, the narration, and a
 viewpoint instruction $\iota$. The difficulty is that a capable vision-language
 model already describes much of what the masks and the first frame make visible,
-so naive imitation of a teacher caption spends most of its gradient on content the
-generator already sees. Two training stages address this.
+so imitating a teacher caption directly spends most of its gradient on content the
+generator already sees, which the two training stages below address.
 
-\textbf{Difference-weighted Caption Distillation.}\quad To concentrate supervision
-on what the existing conditions fail to carry, we compare each teacher sentence
-against what the converter itself would say from the deployable inputs alone.
-Teacher captions $c^\star$ come offline from a 27B vision-language model that
-reads the paired egocentric footage, and a baseline caption $b$ is generated from
-$u$ alone. Aligning each teacher sentence with $b$ separates new from redundant
-content, and we set the token weight $w_j$ to $2.5$, $0.3$, and $1.0$ for new,
-redundant, and partially overlapping content or field labels. For a target of length $L$, the
+\textbf{Difference-weighted Caption Distillation.}\quad To concentrate supervision on what
+the existing conditions fail to carry, we compare each teacher sentence against
+what the converter itself would say from the deployable inputs alone. Teacher
+captions $c^\star$ come offline from a 27B vision-language model that reads the
+paired egocentric footage, and a baseline caption $b$ is generated from $u$ alone.
+Aligning the two separates new from redundant content, and we set the token weight
+$w_j$ to $2.5$, $0.3$, and $1.0$ for new, redundant, and partially overlapping
+content. For a target of length $L$, the
 weighted objective is
 \begin{equation}
 \mathcal{L}_{\mathrm{cap}}(\theta) = -\mathbb{E}_{(u,c^\star)}\left[
@@ -290,14 +285,12 @@ pushed toward content absent from $b$.
 \textbf{Generation-grounded Caption Reinforcement.}\quad To align the
 converter with what the generator can actually use, we continue from the
 distilled checkpoint with GRPO~\citep{shao2024grpo} and define a reward on
-rendered video instead of on text similarity. For each input the rollout policy
-samples $G=8$ candidates, a frozen generator renders a preview
-$\widehat{Y}_i$ for candidate $c_i$, and the preview is cropped to the union
-bounding box of the HOI masks so the reward is measured where the interaction
-is. Let $\mathcal{S}_i$ be the sentences of $c_i$ that are new with respect to
-$b$, let $C_M$ be the crop operator, and let $e_I$ and $e_T$ be
-unit-normalized CLIP~\citep{radford2021clip} image and text embeddings. With
-$F$ preview frames, the reward is
+rendered video instead of on text similarity. For each input the rollout policy samples $G=8$
+candidates, a frozen generator renders a preview $\widehat{Y}_i$ for candidate
+$c_i$, and the preview is cropped to the union bounding box of the HOI masks so
+the reward is measured where the interaction is. Let $\mathcal{S}_i$ be the new
+sentences of $c_i$, $C_M$ the crop operator, and $e_I, e_T$ unit-normalized
+CLIP~\citep{radford2021clip} embeddings. With $F$ preview frames, the reward is
 \begin{equation}
 r_i = \frac{1}{F|\mathcal{S}_i|}\sum_{t=1}^{F}\sum_{s\in\mathcal{S}_i}
 e_I\!\left(C_M(\widehat{Y}_{i,t})\right)^{\!\top} e_T(s),
@@ -312,28 +305,27 @@ Figure~\ref{fig:qwen} summarizes.
 
 \begin{figure}[t]
 \centering
-\begin{subfigure}[b]{0.605\textwidth}
+\begin{subfigure}[b]{\textwidth}
 \centering
 \includegraphics[width=\textwidth]{figs/architecture_illustration.pdf}
 \caption{Any2Ego pipeline.}
 \label{fig:pipeline}
-\end{subfigure}\hfill
-\begin{subfigure}[b]{0.375\textwidth}
+\end{subfigure}
+
+\begin{subfigure}[b]{\textwidth}
 \centering
 \includegraphics[width=\textwidth]{figs/qwen_architecture.pdf}
-\caption{Converter training.}
+\caption{Training of the cross-view caption converter.}
 \label{fig:qwen}
 \end{subfigure}
-\vspace{-2mm}
 \caption{(a) Any2Ego produces the spatial anchor with a cross-view mask predictor
 and the textual anchor with a distilled and reinforcement-refined converter, then
 combines them in a mask-conditioned backbone whose caption branch is gated per
-video token by the dense spatial features of the control branch. (b)
-Difference-weighted distillation concentrates the gradient on caption content
+video token by the dense spatial features of the control branch.
+(b) Difference-weighted distillation concentrates the gradient on caption content
 that the deployable inputs do not already express, and generation-grounded
-reinforcement scores each candidate by how well a rendered preview agrees with
-its newly added sentences inside the interaction region.}
-\vspace{-4mm}
+reinforcement scores each candidate by how well a rendered preview agrees with its
+newly added sentences inside the interaction region.}
 \end{figure}
 
 \subsection{HOI-Conditioned Spatial Routing}
@@ -362,10 +354,9 @@ s_i^{(\ell)} = \sigma\!\left(\left(w^{(\ell)}\right)^{\!\top}
 \operatorname{sg}(m_i) + b^{(\ell)}\right),
 \label{eq:route}
 \end{equation}
-where $m_i$ is the pre-block HOI feature of the control branch aligned with
-video token $i$, $\operatorname{sg}$ stops gradients so the spatial branch is
-unaffected, and $\sigma$ is the sigmoid. Setting $s_i^{(\ell)}\!=\!1$ recovers a
-global gate that scales the branch by one scalar, and $g^{(\ell)}\!=\!0$ removes
+where $m_i$ is the pre-block HOI feature of the control branch aligned with video
+token $i$, $\operatorname{sg}$ stops gradients, and $\sigma$ is the sigmoid.
+Setting $s_i^{(\ell)}\!=\!1$ recovers a global gate and $g^{(\ell)}\!=\!0$ removes
 the caption. We initialize $g^{(\ell)}=0.1$ and $w^{(\ell)}=b^{(\ell)}=0$, so
 routing starts from the neutral factor $0.5$ and cannot destabilize the trained
 spatial branch.
@@ -493,12 +484,12 @@ $f_{\mathrm{cap}}$ on the $N{=}1{,}000$ pool to assess its \emph{first-person
 conversion capability}, where each caption is judged against real egocentric
 frames the converter never sees, against off-the-shelf vision-language models from
 8B to 235B parameters under identical inputs. As shown in Table~\ref{tab:caption}, our 8B converter attains the
-highest composite score of $4.043$, outperforming the strongest off-the-shelf
-model by $0.915$ although that model is nearly thirty times larger, and exceeding
-its own untrained backbone by $1.214$. More importantly, the two stages contribute differently, as
-distillation lifts label-mean from $3.164$ to $4.160$ by teaching the six-field
-first-person form, while generation-grounded reinforcement adds $0.121$
-label-mean and $0.354$ composite by favoring content the generator can render.
+highest composite score of $4.043$ and leads every off-the-shelf model we
+evaluate, including one nearly thirty times larger and its own untrained
+backbone. More importantly, the two stages act differently, as distillation
+establishes the six-field first-person form while generation-grounded
+reinforcement raises faithfulness further by favoring content the generator can
+render.
 Overall, the judged faithfulness of our converter shows that the textual anchor
 can be produced at deployment quality from exocentric inputs alone.
 
@@ -523,7 +514,6 @@ Qwen3.5-9B & 9B & 3.003 & 3.004 & 3.354 & 0.0\% & 99.8\% \\
 Qwen3-VL-8B & 8B & 2.829 & 2.831 & 3.164 & 0.0\% & 99.3\% \\
 \bottomrule
 \end{tabular}
-\vspace{-4mm}
 \end{table}
 \begin{table}[t]
 \centering\small
@@ -555,7 +545,6 @@ $\;\;+$ textual anchor, global gate & yes & 0.636 & 21.74 & 0.163 & 37.8 \\
 $\;\;+$ textual anchor, spatial routing & yes & \textbf{0.660} & \textbf{22.28} & \textbf{0.144} & \textbf{33.3} \\
 \bottomrule
 \end{tabular}
-\vspace{-4mm}
 \end{table}
 
 \textbf{Capability on Egocentric Viewpoint Translation.}\quad We then evaluate the full
@@ -566,12 +555,12 @@ receive the raw exocentric video, with image-to-video generators that receive th
 first frame and the task prompt, each run from its released checkpoint, and with
 the freeze-frame calibration. Since EgoExo-Gen~\citep{xu2025egoexogen} is reproduced on the
 same backbone, the Any2Ego rows isolate what the textual anchor adds to it. As
-shown in Table~\ref{tab:main}, EgoExo-Gen already reaches $42.6$ FVD against
-$121.6$ for the strongest image-to-video baseline, and the textual anchor lowers
-FVD to $37.8$ under a global gate and to $33.3$ under spatial routing, reducing
-LPIPS by $25.8\%$. More importantly, the freeze-frame row shows why the frame-level columns must be
-read with care, as a video with no generated motion attains $0.601$ SSIM at
-$21.88$\,dB and outscores all six open-source generators on both metrics while
+shown in Table~\ref{tab:main}, EgoExo-Gen already separates itself from every
+open-source generator on FVD, and the textual anchor improves it further under
+both injection rules, with spatial routing reaching $33.3$ FVD and leading on all
+four metrics without a single inversion. More importantly, the freeze-frame row
+shows why the frame-level columns must be read with care, since a video with no
+generated motion outscores all six open-source generators on SSIM and PSNR while
 placing near the bottom on FVD. Overall, Any2Ego translates viewpoints in a way
 that frame-level agreement alone cannot explain.
 
@@ -591,7 +580,6 @@ structure.
 \begin{figure}[t]
 \centering
 \includegraphics[width=0.52\textwidth]{figs/qual_compare/qualitative_grid.pdf}
-\vspace{-2mm}
 \caption{Spatial routing preserves the viewpoint-dependent scene structure
 that a mask leaves unspecified, including the layout of the cooking area in
 (a) skillet placement at frame 9, the overhead cabinet in (b) scooping oil at
@@ -599,7 +587,6 @@ frame 11, and the window and background content in (c) cleaning a milk-tea cup
 at frame 10. Ground truth is shown for comparison only and is never available
 to any model.}
 \label{fig:qual}
-\vspace{-4mm}
 \end{figure}
 
 \section{Analysis}
@@ -610,18 +597,16 @@ to any model.}
 
 The natural alternative to a caption is to pass continuous vision-language
 features across views. To test this under a controlled comparison, we build a
-continuous branch that extracts visual and instruction tokens from layer 32 of a
-frozen Qwen3-VL-32B on 13 exocentric frames, projects the 5120-dimensional
-features into the video model, and injects them through a globally gated
-cross-attention branch. It sits on the same frozen EgoExo-Gen base and differs
-from the text branch only in what it carries.
+continuous branch that extracts visual and instruction tokens from a frozen
+Qwen3-VL-32B on the exocentric frames, projects them into the video model, and
+injects them through a globally gated cross-attention branch. It sits on the same
+frozen EgoExo-Gen base and differs from the text branch only in what it carries.
 
-As shown in Table~\ref{tab:main}, the continuous branch improves the
-frame-level metrics yet reaches $44.5$ FVD, worse than the $42.6$ of EgoExo-Gen
-itself, so it buys frame-level agreement without improving the video
-distribution. The text branch under the same gate reaches $37.8$ FVD, raises
-SSIM by $0.018$, and lowers LPIPS by $0.021$ against the continuous branch,
-which places the text advantage before any routing is introduced. Two properties of a caption explain
+As shown in Table~\ref{tab:main}, the continuous branch improves the frame-level
+metrics yet leaves FVD no better than EgoExo-Gen itself, so it buys frame-level
+agreement without improving the video distribution. Under the same gate the text
+branch improves both, which places the text advantage before any routing is
+introduced. Two properties of a caption explain
 the gap. First, the converter selects interaction-relevant content over all
 exocentric appearance and already states it in the target viewpoint, whereas the
 continuous branch retains source-view tokens whose relation to the egocentric
@@ -635,9 +620,9 @@ To test the prediction of Eq.~\ref{eq:dilution} we hold everything except the
 gating rule fixed, so the two variants share the frozen EgoExo-Gen base, the same
 captions clip for clip, the same projections, and the same schedule.
 
-As shown in Table~\ref{tab:main}, HOI-conditioned routing lowers FVD from $37.8$
-to $33.3$ and LPIPS from $0.163$ to $0.144$, improving every metric without a
-single inversion. Two features of the comparison support the dilution account. First, the route helps more on the
+As shown in Table~\ref{tab:main}, HOI-conditioned routing improves every metric
+over the global gate without a single inversion, and the margin is largest on
+FVD. Two features of the comparison support the dilution account. First, the route helps more on the
 distributional metric than on the frame-level ones, which is expected when the
 correction concentrates on a minority of tokens whose contribution to a
 frame-averaged score is small. Second, the gain survives on clips where
@@ -649,67 +634,62 @@ cost of $30$ projection vectors of width $d$.
 \subsection{Ablation Study on Anchor Content}
 \label{sec:ablation}
 
+\begin{wraptable}{r}{0.48\textwidth}
+\centering\small
+\caption{The trained model reads the content of both anchors, and the division of
+labor is asymmetric. Win is the fraction of clips on which the original conditions
+give higher SSIM than the randomized input.}
+\label{tab:ablation}
+\begin{tabular}{lC{0.95cm}C{1.0cm}C{1.0cm}}
+\toprule
+\textbf{Condition} & \textbf{SSIM}\,$\uparrow$ & \textbf{LPIPS}\,$\downarrow$ & \textbf{Win}\,$\uparrow$ \\
+\midrule
+\textbf{Original} & \textbf{0.660} & \textbf{0.144} & \\
+$\;$caption rand. & 0.632 & 0.166 & 88.7\% \\
+$\;$mask rand. & 0.423 & 0.504 & 100.0\% \\
+\bottomrule
+\end{tabular}
+\end{wraptable}
+
 A trained generator could ignore both anchors and rely on the data distribution,
 so we test whether it reads their content. We keep the trained routing model fixed
 and randomize one condition at a time at inference, where caption randomization
 substitutes text of the same length and mask randomization moves the spatial
 locations while preserving the per-class pixel budget. As reported in Table~\ref{tab:ablation}, randomizing the caption
-lowers SSIM from $0.660$ to $0.632$ and raises LPIPS to $0.166$, with the original
-conditions winning on $88.7\%$ of clips, and randomizing the mask lowers SSIM to
-$0.423$ and raises LPIPS to $0.504$, winning on every clip. Both anchors are
+degrades every metric and the original conditions win on $88.7\%$ of clips, while
+randomizing the mask degrades them far more and wins on every clip. Both anchors are
 therefore read, and they divide the work asymmetrically, as the spatial anchor
 supplies the geometric skeleton while the textual anchor supplies a smaller and
 consistent semantic refinement, which is what the design intends.
 
+
+
 \begin{table}[t]
-\centering
-\begin{minipage}[t]{0.47\textwidth}
-\centering\small\setlength{\tabcolsep}{3.5pt}
-\caption{The trained model reads the content of both anchors, and the division
-of labor is asymmetric, since randomizing the mask costs far more than
-randomizing the caption while both degrade the output. Win is the fraction of clips on
-which the original conditions give higher SSIM than the randomized input. SSIM
-and Win are higher is better and LPIPS is lower is better. Best values are in
-\textbf{bold}.}
-\label{tab:ablation}
-\begin{tabular}{lC{0.84cm}C{0.84cm}C{0.84cm}C{0.96cm}}
-\toprule
-\textbf{Condition} & \textbf{SSIM} & \textbf{PSNR} & \textbf{LPIPS} & \textbf{Win} \\
-\midrule
-\textbf{Original} & \textbf{0.660} & \textbf{22.28} & \textbf{0.144} & \\
-$\;$cap.\ rand. & 0.632 & 21.59 & 0.166 & 88.7\% \\
-$\;$mask rand. & 0.423 & 16.38 & 0.504 & 100.0\% \\
-\bottomrule
-\end{tabular}
-\end{minipage}\hfill
-\begin{minipage}[t]{0.515\textwidth}
-\centering\small\setlength{\tabcolsep}{3.5pt}
+\centering\small
 \caption{Residual-frame analysis after subtracting each video's own first frame
 shows that Any2Ego generates real motion while image-to-video baselines mostly
-retain the given frame. $\Delta$Corr is the residual correlation and
-$\Delta$PSNR the residual fidelity, both higher is better, and the magnitude
-ratio Mag.\ has target $1$. Best values are in \textbf{bold}.}
+retain the given frame. $\Delta$Corr is the residual correlation and $\Delta$PSNR
+the residual fidelity, both higher is better, and the magnitude ratio has target
+$1$. Best values are in \textbf{bold}.}
 \label{tab:residual}
-\begin{tabular}{lC{1.03cm}C{1.03cm}C{0.7cm}}
+\begin{tabular}{lC{2.0cm}C{2.0cm}C{2.4cm}}
 \toprule
-\textbf{Method} & \textbf{$\Delta$Corr} & \textbf{$\Delta$PSNR} & \textbf{Mag.} \\
+\textbf{Method} & \textbf{$\Delta$Corr}\,$\uparrow$ & \textbf{$\Delta$PSNR}\,$\uparrow$ & \textbf{Mag.\ ratio}\,($\to\!1$) \\
 \midrule
 \textit{Ground truth} & \textit{1.000} & & \textit{1.000} \\
 \midrule
-Stable Video Diff & 0.108 & 14.85 & 1.77 \\
-Wan2.2-TI2V & 0.221 & 18.45 & 0.73 \\
+Stable Video Diffusion & 0.108 & 14.85 & 1.77 \\
+Wan2.2-TI2V-5B & 0.221 & 18.45 & 0.73 \\
 LTX-Video & 0.233 & 18.86 & 0.61 \\
-CogVideoX-I2V & 0.198 & 18.76 & 0.54 \\
-Wan2.1-VACE & 0.003 & 18.09 & 0.71 \\
-Wan2.1-Fun & 0.319 & 10.35 & 5.28 \\
+CogVideoX-5B-I2V & 0.198 & 18.76 & 0.54 \\
+Wan2.1-VACE-1.3B & 0.003 & 18.09 & 0.71 \\
+Wan2.1-Fun-1.3B-Control & 0.319 & 10.35 & 5.28 \\
 \midrule
-EgoExo-Gen & 0.561 & 19.80 & 1.18 \\
-$\;+$ caption, global & 0.614 & 20.47 & 1.14 \\
-$\;+$ caption, route & \textbf{0.647} & \textbf{21.17} & \textbf{1.04} \\
+EgoExo-Gen (reproduced) & 0.561 & 19.80 & 1.18 \\
+$\;\;+$ textual anchor, global gate & 0.614 & 20.47 & 1.14 \\
+$\;\;+$ textual anchor, spatial routing & \textbf{0.647} & \textbf{21.17} & \textbf{1.04} \\
 \bottomrule
 \end{tabular}
-\end{minipage}
-\vspace{-4mm}
 \end{table}
 
 \subsection{Analysis of Residual Motion Fidelity}
@@ -717,21 +697,20 @@ $\;+$ caption, route & \textbf{0.647} & \textbf{21.17} & \textbf{1.04} \\
 
 Since the freeze-frame calibration shows that a short clip can score well by
 staying still, we need a measurement that sees only what a model generates. We
-therefore subtract each video's own first frame and compare the residual fields
-with the Pearson correlation ($\Delta$Corr), the residual PSNR ($\Delta$PSNR), and
-the ratio of mean absolute residual magnitudes. A model holding its first frame
-scores zero correlation by construction.
+subtract each video's own first frame and compare the residual fields with the
+Pearson correlation ($\Delta$Corr), the residual PSNR ($\Delta$PSNR), and the ratio
+of mean absolute residual magnitudes, where a model holding its first frame scores
+zero correlation by construction.
 
 As shown in Table~\ref{tab:residual}, EgoExo-Gen and the two Any2Ego variants
-reach $\Delta$Corr of $0.561$, $0.614$, and $0.647$, while the prompt-conditioned
-baselines stay near $0.20$ and reproduce only $54\%$ to $73\%$ of the true residual
-magnitude, so their frame-level scores come mostly from retained appearance.
-Spatial routing brings the magnitude ratio to $1.04$ against $1.18$ for
-EgoExo-Gen, so the textual anchor corrects the amount of motion as well as its
-location. Across terciles of
-ground-truth motion $\Delta$Corr rises from $0.565$ to $0.713$ for spatial
-routing as real motion grows, while it stays flat near $0.22$ for the baselines,
-which is the signature of a model copying its input frame. Overall, the residual analysis shows
+raise residual correlation in order, reaching $0.647$, while the
+prompt-conditioned baselines stay near $0.20$ and reproduce only half to three
+quarters of the true residual magnitude, so their frame-level scores come mostly
+from retained appearance. Spatial routing also brings the magnitude ratio closest
+to its target of $1$, so the textual anchor corrects the amount of motion as well
+as its location. Across terciles of ground-truth motion, residual correlation
+rises for spatial routing as real motion grows while it stays flat for the
+baselines, which is the signature of a model copying its input frame. Overall, the residual analysis shows
 that the reported gains correspond to generated motion.
 
 \section{Conclusion}
@@ -947,7 +926,6 @@ Qwen3.5-9B & 3.22 & 3.43 & 3.31 & 3.52 & 3.22 & 3.42 \\
 Qwen3-VL-8B & 2.87 & 3.15 & 2.89 & 3.68 & 2.93 & 3.47 \\
 \bottomrule
 \end{tabular}
-\vspace{-4mm}
 \end{table}
 
 As shown in Table~\ref{tab:fields}, our converter leads on four of the six
@@ -977,13 +955,11 @@ whole pool instead of a favorable subset.
 \begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{figs/metric_distributions_ssim_psnr.pdf}
-\vspace{-2mm}
 \caption{The textual anchor shifts the whole evaluation pool instead of a
 favorable subset, since per-clip (a) SSIM and (b) PSNR distributions move
 together across EgoExo-Gen, the global gate, and spatial routing under a shared
 kernel bandwidth.}
 \label{fig:dist}
-\vspace{-4mm}
 \end{figure}
 
 \section{Additional Qualitative Examples}
@@ -992,14 +968,12 @@ kernel bandwidth.}
 \begin{figure}[t]
 \centering
 \includegraphics[width=\textwidth]{figs/appendix_cases.pdf}
-\vspace{-2mm}
 \caption{Spatial routing follows the ground-truth framing of the cooking area
 more closely on three further cases, including (a) placing a pot on the cooker
 at frame 12, (b) lifting an omelet with a spatula at frame 10, and (c) holding
 a tea-bag sachet at frame 3. Gold boxes mark identical crop coordinates across
 methods, and the reported scores are computed over the full 13-frame clip.}
 \label{fig:appendix-cases}
-\vspace{-4mm}
 \end{figure}
 
 As shown in Figure~\ref{fig:appendix-cases}, the pot-placement and omelet
